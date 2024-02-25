@@ -1,5 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db-config");
+const Cart = require("./cart");
+const Order = require("./order");
 
 const CartProduct = sequelize.define("CartProduct", {
 
@@ -22,6 +24,11 @@ const CartProduct = sequelize.define("CartProduct", {
 
  
 });
+
+
+
+Order.hasMany(CartProduct);
+CartProduct.belongsTo(Order);
 
 
 

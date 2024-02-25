@@ -25,7 +25,8 @@ module.exports.addProductToCart =async (req,res)=>{
         const isAlreadyInCart = await CartProduct.findOne({
             where:{
                 productId:product.id,
-                CartId:user.CartId
+                CartId:user.CartId,
+                OrderId:null
 
             }
         });
@@ -106,20 +107,22 @@ async function productDetailInCart (CartId){
     const cart_products = await CartProduct.findAll({
         where:{
             CartId,
+            OrderId:null
         }
     });
     const res = [];
     cart_products.forEach((product)=>{
         res.push(product.productId);
     })
-    const allCartProduct = await Product.findAll({
+
+    const allCartProducts = await Product.findAll({
         where:{
             id:res
         }
     });
 
-    return allCartProduct;
 
+    return allCartProducts;
 
 }
 
@@ -143,7 +146,9 @@ module.exports.removeCartProduct = async(req,res)=>{
         }
         const productToBeUpdated= await CartProduct.findOne({
             where:{
-                productId
+                productId,
+                CartId:user.CartId,
+                OrderId:null
             }
         });
 
@@ -166,7 +171,9 @@ module.exports.removeCartProduct = async(req,res)=>{
     
         const deletedProduct= await CartProduct.destroy({
             where:{
-                productId
+                productId,
+                CartId:user.CartId,
+                OrderId:null
             }
         });
         
@@ -192,25 +199,46 @@ module.exports.updateQuantities = async(req,res)=>{
             if(!user){
                 return res.status(401).json(ApiResponse(false,401,{},"Unauthorised user",null))
         }
-        const product = await Product.findByPk(productId);
-        if(!product){
-            return res.status(200).json(ApiResponse(false,200,{},"No such product found in Cart",null))
 
-        }
+        const product = await Product.findOne({
+            where:{
+                id:productId
+            }
+        })
+
+
         const productToBeUpdated= await CartProduct.findOne({
             where:{
-                productId
+                productId,
+                CartId:user.CartId,
+                OrderId:null
             }
         });
+
+
         if( !productToBeUpdated){
             return res.status(502).json(ApiResponse(false,502,{},"No such product in cart",null))
     
         }
-        if(incr == true){
+
+
+        if(incr === 'true'){
 
             productToBeUpdated.qty = Number( productToBeUpdated.qty) + 1;
         }else{
-            productToBeUpdated.qty = Number( productToBeUpdated.qty) - 1;
+            if(productToBeUpdated.qty==1){
+                const deletedProduct= await CartProduct.destroy({
+                    where:{
+                        productId,
+                        CartId:user.CartId,
+                        OrderId:null
+                    }
+                });
+                
+            }else{
+                
+                productToBeUpdated.qty = Number( productToBeUpdated.qty) - 1;
+            }
         }
         const updatedCartProductList = productToBeUpdated.save();
         if(!updatedCartProductList){
@@ -222,7 +250,7 @@ module.exports.updateQuantities = async(req,res)=>{
                 id:user.CartId
             }
         });
-        if(incr == true){
+        if(incr === 'true'){
 
             cart.totalPrice = Number(cart.totalPrice) + Number(product.price);
             cart.totalQty = (Number)(cart.totalQty)  + 1;
@@ -236,12 +264,12 @@ module.exports.updateQuantities = async(req,res)=>{
             return res.status(502).json(ApiResponse(false,502,{},"Cart not updated",null))
         }
     
-        return res.status(200).json(ApiResponse(true,200,updatedCartProductList,`Quantity ${incr==true? "increases": "decreases"} successfully`,null));
+        return res.status(200).json(ApiResponse(true,200,updatedCartProductList,`Quantity ${incr==='true'? "increases": "decreases"} successfully`,null));
         
 
 
     } catch (error) {
-        return res.status(500).json(ApiResponse(false,500,null,"something went wrong while updatin quantity",error))
+        return res.status(500).json(ApiResponse(false,500,null,"something went wrong while updating quantity",error))
         
     }
 }

@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db-config");
 const Cart = require("./cart");
+const Order = require('./order');
 
 const User = sequelize.define("User", {
 
@@ -29,7 +30,8 @@ const User = sequelize.define("User", {
 Cart.hasOne(User);
 User.belongsTo(Cart);
 
-
+User.hasMany(Order);
+Order.belongsTo(User);
 
 
 module.exports = User;
