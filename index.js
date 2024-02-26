@@ -1,14 +1,11 @@
-// importing required files and modules
 require('dotenv').config();
 const express = require('express');
 const app = express();
 const sequelize = require('./config/db-config')
 const passport = require('passport');
 const passportJWT = require('./config/passport-jwt');
-const User = require('./models/user');
 const Category = require('./models/category');
 const Product = require('./models/product');
-const Cart = require('./models/cart');
 const errorMiddleware = require('./config/errorMiddleware');
 
 // defining port 
@@ -23,7 +20,6 @@ app.use(express.json());
 
 Category.hasMany(Product);
 Product.belongsTo(Category);
-
 
 
 // creating tables in database
