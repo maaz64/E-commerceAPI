@@ -3,8 +3,10 @@ const Cart = require('../models/cart');
 const CartProduct = require('../models/cartProduct');
 const Product = require('../models/product');
 const User = require('../models/user');
+const APIError = require('../config/APIError');
 
-module.exports.addProductToCart =async (req,res)=>{
+
+module.exports.addProductToCart =async (req,res,next)=>{
 
     try {
         const {userId} = req.params;
@@ -12,13 +14,15 @@ module.exports.addProductToCart =async (req,res)=>{
         
         const user = await User.findByPk(userId);
         if(!user){
-            return res.status(401).json(ApiResponse(false,401,{},"Unauthorised User",null))
+            return next( new APIError(401, "Unauthorised User"));
+
            
         }
 
         const product = await Product.findByPk(productId);
         if(!product){
-            return res.status(200).json(ApiResponse(false,200,{},"No such product found",null))
+            return next( new APIError(404, "Product Not Found"));
+
 
         }
 
@@ -31,7 +35,8 @@ module.exports.addProductToCart =async (req,res)=>{
             }
         });
         if(isAlreadyInCart){
-            return res.status(200).json(ApiResponse(true,200,{},"Product already added in cart",null))
+            return next( new APIError(400, "Product already added in cart"));
+
         }
 
         const addedTocartProduct = await CartProduct.create({
@@ -40,7 +45,8 @@ module.exports.addProductToCart =async (req,res)=>{
         });
 
         if(!addedTocartProduct){
-            return res.status(502).json(ApiResponse(false,502,{},"Product not added in Cart",null))
+            return next( new APIError(500, "Due to some reason product not added in cart"));
+
         }
 
         const cart = await Cart.findOne({
@@ -55,26 +61,29 @@ module.exports.addProductToCart =async (req,res)=>{
 
 
         if(!updatedCart){
-            return res.status(502).json(ApiResponse(false,502,{},"Cart not updated",null))
+            return next( new APIError(500, "Due to some reason cart not updated"));
+
         }
-        return res.status(201).json(ApiResponse(true,201,{
+        return res.status(201).json(ApiResponse(true,{
             id:updatedCart.id,
             totalPrice:updatedCart.totalPrice,
             totalQty:updatedCart.totalQty
-        },"Product added in cart successfully",null))
+        },"Product added in cart successfully"))
 
 
     } catch (error) {
-        return res.status(500).json(ApiResponse(false,500,null,"Something went wrong while adding product to the cart",error));
+        return next( new APIError(500, "Something went wrong while adding product to the cart"));
+
     }
 }
 
-module.exports.viewCart = async(req,res)=>{
+module.exports.viewCart = async(req,res,next)=>{
     try {
         const {userId} = req.params;
         const user = await User.findByPk(userId);
         if(!user){
-            return res.status(401).json(ApiResponse(false,401,{},"Unauthorised user",null))
+            return next( new APIError(401, "Unauthorised User"));
+
         }
 
         const cart = await Cart.findOne({
@@ -85,20 +94,22 @@ module.exports.viewCart = async(req,res)=>{
 
         const allCartProducts = await productDetailInCart(user.CartId);
         if( !Cart || ! allCartProducts){
-            return res.status(502).json(ApiResponse(false,502,{},"something went wrong while fetching cart products",null));
+            return next( new APIError(500, "Due to some reason cart details not fetched"));
+
         }
 
         
-        return res.status(200).json(ApiResponse(true,200,{
+        return res.status(200).json(ApiResponse(true,{
             id:cart.id,
             totalPrice:cart.totalPrice,
             totalQty:cart.totalQty,
             cartProducts:allCartProducts
-        },"Cart detail fetched successfully",null));
+        },"Cart detail fetched successfully"));
 
 
     } catch (error) {
-        return res.status(500).json(ApiResponse(false,500,null,"something went wrong while fetching cart detail",error))
+        return next( new APIError(500, "something went wrong while fetching cart detail"));
+
         
     }
 }
@@ -128,7 +139,7 @@ async function productDetailInCart (CartId){
 
 
 
-module.exports.removeCartProduct = async(req,res)=>{
+module.exports.removeCartProduct = async(req,res,next)=>{
 
     const {userId} = req.params;
     const { productId} = req.query;
@@ -137,11 +148,13 @@ module.exports.removeCartProduct = async(req,res)=>{
     try {
         const user = await User.findByPk(userId);
             if(!user){
-                return res.status(401).json(ApiResponse(false,401,{},"Unauthorised user",null))
+            return next( new APIError(401, "Unauthorised User"));
+
         }
         const product = await Product.findByPk(productId);
         if(!product){
-            return res.status(200).json(ApiResponse(false,200,{},"No such product found",null))
+            return next( new APIError(404, "Product not found"));
+
 
         }
         const productToBeUpdated= await CartProduct.findOne({
@@ -153,7 +166,8 @@ module.exports.removeCartProduct = async(req,res)=>{
         });
 
         if( !productToBeUpdated){
-            return res.status(502).json(ApiResponse(false,502,{},"No such product in cart",null))
+            return next( new APIError(404, "Product not found in cart"));
+
     
         }
 
@@ -166,7 +180,8 @@ module.exports.removeCartProduct = async(req,res)=>{
         cart.totalQty = (Number)(cart.totalQty)  - (Number)(productToBeUpdated.qty);
         const updatedCart = await cart.save();
         if(!updatedCart){
-            return res.status(502).json(ApiResponse(false,502,{},"Cart not updated",null))
+            return next( new APIError(500, "something went wrong while removing product from cart"));
+
         }
     
         const deletedProduct= await CartProduct.destroy({
@@ -179,25 +194,28 @@ module.exports.removeCartProduct = async(req,res)=>{
         
     
         if(!deletedProduct){
-            return res.status(502).json(ApiResponse(false,502,{},"Product not removed",null))
+            return next( new APIError(500, "something went wrong while removing product from cart"));
+
     
         }
     
-        return res.status(200).json(ApiResponse(true,200,productToBeUpdated,"Product removed from cart successfully",null));
+        return res.status(200).json(ApiResponse(true,productToBeUpdated,"Product removed from cart successfully"));
     } catch (error) {
-        return res.status(500).json(ApiResponse(false,500,null,"something went wrong while removing product from cart",error))
+        return next( new APIError(500, "something went wrong while removing product from cart"));
+
     }
     
 }
 
-module.exports.updateQuantities = async(req,res)=>{
+module.exports.updateQuantities = async(req,res,next)=>{
     const {userId} = req.params;
     const {productId, incr} = req.query;
 
     try {
         const user = await User.findByPk(userId);
             if(!user){
-                return res.status(401).json(ApiResponse(false,401,{},"Unauthorised user",null))
+            return next( new APIError(401, "Unauthorised User"));
+
         }
 
         const product = await Product.findOne({
@@ -217,8 +235,7 @@ module.exports.updateQuantities = async(req,res)=>{
 
 
         if( !productToBeUpdated){
-            return res.status(502).json(ApiResponse(false,502,{},"No such product in cart",null))
-    
+            return next( new APIError(404, "Product not found in cart"));
         }
 
 
@@ -242,7 +259,8 @@ module.exports.updateQuantities = async(req,res)=>{
         }
         const updatedCartProductList = productToBeUpdated.save();
         if(!updatedCartProductList){
-            return res.status(502).json(ApiResponse(false,502,{},"Cart not updated",null))
+            return next( new APIError(500, "something went wrong while updating quantity"));
+
         }
       
         const cart = await Cart.findOne({
@@ -261,18 +279,17 @@ module.exports.updateQuantities = async(req,res)=>{
         }
         const updatedCart = await cart.save();
         if(!updatedCart){
-            return res.status(502).json(ApiResponse(false,502,{},"Cart not updated",null))
+            return next( new APIError(500, "something went wrong while updating quantity"));
+
+            
         }
     
-        return res.status(200).json(ApiResponse(true,200,updatedCartProductList,`Quantity ${incr==='true'? "increases": "decreases"} successfully`,null));
+        return res.status(200).json(ApiResponse(true,updatedCartProductList,`Quantity ${incr==='true'? "increases": "decreases"} successfully`));
         
 
 
     } catch (error) {
-        return res.status(500).json(ApiResponse(false,500,null,"something went wrong while updating quantity",error))
-        
+        return next( new APIError(500, "something went wrong while updating quantity"));  
     }
 }
 
-// write a function that loop over cartProduct and give total price and total quantity;
-// write a function that give all cartProduct detail instead of productId and also gives the quantity of every cartProduct

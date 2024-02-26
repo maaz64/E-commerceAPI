@@ -9,6 +9,7 @@ const User = require('./models/user');
 const Category = require('./models/category');
 const Product = require('./models/product');
 const Cart = require('./models/cart');
+const errorMiddleware = require('./config/errorMiddleware');
 
 // defining port 
 const port  = 8080 || process.env.port;
@@ -33,7 +34,8 @@ Product.belongsTo(Category);
 
 
 // using routes
-app.use('/',require('./routes/index'));
+app.use('/api/',require('./routes/index'));
+app.use(errorMiddleware);
 
 // listening the server at port 8000
 app.listen(port,(err)=>{

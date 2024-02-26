@@ -4,36 +4,33 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { ApiResponse } = require('../config/ApiResponse');
 const Cart = require('../models/cart');
+const APIError = require('../config/APIError');
 
-// function to create user in database
-module.exports.createUser = async (req, res) => {
+module.exports.createUser =  async (req, res,next) => {
   try {
 
-    // destructuring the forms data from req.body
+  
     const { username, email, password, confirm_password } = req.body;
 
-    //  checking if username or phone number or password is not null
     if(!username  || !email || !password){
-        return res.status(401).json(ApiResponse(false,401,{},"All fields are required",null));
+        return next( new APIError(400, "All fields are required"))
     }
 
-    // checking password and confirm password are same or not
     if (password != confirm_password) {
-        return res.status(401).json(ApiResponse(false,401,{},"password doesn't match",null));
+        return next( new APIError(400, "password doesn't match")
+)
+    }
 
-      }
-
-    // checking if the user with given email is already registered or not
     const checkUserExisted = await User.findOne({ where: { email} });
 
     if(checkUserExisted){
-      return res.status(409).json(ApiResponse(false,409,{},"User already registered",null));
+      return next( new APIError(409, "User with email already exists"))
     }
 
-    // encrypting the password before storing it in database using bcrypt
+
     const cart = await Cart.create({})
     const saltRounds = 10;
-    const hashPassword =await bcrypt.hashSync(password, saltRounds);
+    const hashPassword = await bcrypt.hashSync(password, saltRounds);
     const user = await User.create({
         username,
         email,
@@ -42,70 +39,62 @@ module.exports.createUser = async (req, res) => {
     });
 
     if(!user){
-      return res.status(401).json(ApiResponse(false,401,{},"User not created",null));
-
+      return next( new APIError(500, "Something went wrong while registering the user"));
     }
 
 
-    return res.status(201).json(ApiResponse(true,201,
+    return res.status(201).json(ApiResponse(true,
     {
       id:user.id,
       username:user.username,
       email:user.email
     },
-    "User created successfully",null));
+    "User created successfully"));
   } catch (error) {
-    return res.status(500).json(ApiResponse(false,500,null,"Internal Server Error",error));
+    return next( new APIError(500, "Something went wrong while registering the user"));
+
   }
 
  
 };
 
-
-// function to authenticate user using passport-jwt strategy 
-module.exports.login = async (req, res) => {
+module.exports.login = async (req, res,next) => {
     try {
-      // destructuring the forms data from req.body
       const { email, password } = req.body;
       if(!email || !password){
-        return res.status(401).json(ApiResponse(false,401,{},"All fields are required",null));
-
+        return next( new APIError(400, "All fields are required"))
       }
-      
-      // checking user with the given phone number existed or not in database
+
       const user = await User.findOne({ where: { email} })
       if (!user) {
-        return res.status(401).json(ApiResponse(false,401,{},"Invalid Credentials",null));
-
+        return next( new APIError(401, "Invalid Credentials"));
       }
       
-      // compairing password
       const isPassMatch = await bcrypt.compare(password, user.password);
   
       if (!isPassMatch) {
-        return res.status(401).json(ApiResponse(false,401,{},"Email/Password doesn't match",null));
-
+        return next( new APIError(401, "Email/Password doesn't match"));
       }
   
-      //  generating token using jsonwebtoken(jwt)
       const token = jwt.sign({ email }, process.env.SECRETKEY, {
         expiresIn: "1h",
       });
   
       if(!token){
-        return res.status(500).json(ApiResponse(false,500,{},"Token Not Created",null));
+        return next( new APIError(500, "Token Not Created"));
+
       }
-      return res.status(200).json(ApiResponse(true,200,
+      return res.status(200).json(ApiResponse(true,
         {
           id:user.id,
           username: user.username,
           userId: user.userId,
           token,
-        },"Sign In Successfull",null));
+        },"Sign In Successfull"));
 
 
     } catch (error) {
-      return res.status(500).json(ApiResponse(false,500,null,"Internal Server Error",error));
+      return next( new APIError(500, "Internal Server Error",error));
     }
   };
 

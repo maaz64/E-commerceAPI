@@ -1,6 +1,6 @@
-module.exports.ApiResponse = (success,statusCode, data, message,error)=>{
+module.exports.ApiResponse = (success, data, message)=>{
 
     return {
-        success,statusCode,message,data,error
+        success,message,data,
     }
 }

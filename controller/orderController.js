@@ -4,6 +4,7 @@ const CartProduct = require('../models/cartProduct');
 const Order = require('../models/order');
 const User = require('../models/user');
 const Product = require('../models/product');
+const APIError = require('../config/APIError');
 
 async function productDetailInOrder (CartId,OrderId){
     const cart_products = await CartProduct.findAll({
@@ -26,21 +27,19 @@ async function productDetailInOrder (CartId,OrderId){
 
 }
 
-module.exports.placeOrder = async(req,res)=>{
+module.exports.placeOrder = async(req,res,next)=>{
 
     try {
         const {userId} = req.params;
         const user = await User.findByPk(userId);
         if(!user){
-            return res.status(401).json(ApiResponse(false,401,{},"Unauthorised User",null))
-           
+            return next( new APIError(401, "Unauthorised User"));  
         }
 
         const cart = await Cart.findByPk(user.CartId);
 
         if(cart.totalPrice == 0 || cart.totalQty==0){
-            return res.status(200).json(ApiResponse(true,200,{},"Cart is Empty!!! Add product before placing order", null));
-
+            return next( new APIError(400, "Cart is Empty!!! Add product before placing order"));
         }
 
         const order = await Order.create({
@@ -55,7 +54,8 @@ module.exports.placeOrder = async(req,res)=>{
         const clearCart = await cart.save();
 
         if(!order || !clearCart){
-            return res.status(502).json(ApiResponse(false,502,{},"something went wrong while placing order", null));
+            return next( new APIError(502, "something went wrong while placing order"));
+
         }
 
         const updated = await CartProduct.update({
@@ -68,25 +68,24 @@ module.exports.placeOrder = async(req,res)=>{
         });
 
         
-        if(!updated){
-            return res.status(502).json(ApiResponse(false,502,{},"something went wrong while placing order", null));    
+        if(!updated){ 
+            return next( new APIError(502, "something went wrong while placing order"));
+
         }
         const orderedProducts =await productDetailInOrder(cart.id, order.id);
         if(!orderedProducts){
-            return res.status(502).json(ApiResponse(false,502,{},"something went wrong while placing order", null));    
+            return next( new APIError(502, "something went wrong while placing order"));
+
         }
 
-        return res.status(200).json(ApiResponse(true,200,{orderDetails:order,orderedProducts},"Order placed successfully", null));
+        return res.status(200).json(ApiResponse(true,{orderDetails:order,orderedProducts},"Order placed successfully"));
         
     } catch (error) {
-
-        return res.status(500).json(ApiResponse(false,500,null,"something went wrong while placing order", error));
-
-        
+        return next( new APIError(500, "something went wrong while placing order"));
     }
 }
 
-module.exports.getAllOrder = async(req,res)=>{
+module.exports.getAllOrder = async(req,res,next)=>{
 
     try {
 
@@ -94,8 +93,7 @@ module.exports.getAllOrder = async(req,res)=>{
         const user = await User.findByPk(userId);
 
         if(!user){
-            return res.status(401).json(ApiResponse(false,401,{},"Unauthorised User",null))
-           
+            return next( new APIError(401, "Unauthorised User"));
         }
 
         const orders = await Order.findAll({
@@ -105,19 +103,21 @@ module.exports.getAllOrder = async(req,res)=>{
         });
 
         if(!orders){
-            return res.status(502).json(ApiResponse(false,502,{},"Something went wrong while fetching orders",null))   
+        return next( new APIError(500, "something went wrong while fetching orders"));
+
         }
 
-        return res.status(200).json(ApiResponse(true,200,orders,"Orders fetched successfully",null))
+        return res.status(200).json(ApiResponse(true,orders,"Orders fetched successfully"))
         
     } catch (error) {
-        return res.status(500).json(ApiResponse(false,500,null,"Something went wrong while fetching orders",error))
+        return next( new APIError(500, "something went wrong while fetching orders"));
+
         
     }
 }
 
 
-module.exports.getOrderDetail = async(req,res)=>{
+module.exports.getOrderDetail = async(req,res,next)=>{
 
     try {
         const {userId} = req.params;
@@ -125,8 +125,7 @@ module.exports.getOrderDetail = async(req,res)=>{
         const user = await User.findByPk(userId);
 
         if(!user){
-            return res.status(401).json(ApiResponse(false,401,{},"Unauthorised User",null))
-           
+            return next( new APIError(401, "Unauthorised User"));
         } 
 
         const order = await Order.findOne({
@@ -137,31 +136,28 @@ module.exports.getOrderDetail = async(req,res)=>{
         });
 
         if(!order){
-            return res.status(404).json(ApiResponse(false,404,{},"No such order recorded",null))
-
+            return next( new APIError(404, "No such order recorded"));
         }
 
         const allOrderProducts = await productDetailInOrder(order.CartId,order.id);
 
         if(!allOrderProducts){
-            return res.status(502).json(ApiResponse(false,502,{},"something went wrong while fetching ordered products",null))
-
+            return next( new APIError(500, "Something went wrong while fetching ordered products"));
         }
 
 
 
-        return res.status(200).json(ApiResponse(true,200,{
+        return res.status(200).json(ApiResponse(true,{
 
             totalPrice:order.totalPrice,
             totalQty:order.totalQty,
             products:allOrderProducts
-        },"Ordered Detail fetched successfully",null))
+        },"Ordered Detail fetched successfully"))
 
 
 
 
     } catch (error) {
-        return res.status(500).json(ApiResponse(false,500,null,"Something went wrong while getting order details",error))
-        
+        return next( new APIError(500, "Something went wrong while fetching ordered products"));
     }
 }

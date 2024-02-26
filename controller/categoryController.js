@@ -1,15 +1,17 @@
 const Product = require("../models/product");
 const Category = require("../models/category");
 const { ApiResponse } = require("../config/ApiResponse");
+const APIError = require('../config/APIError');
 
 
-module.exports.getAllProductsOfACategory = async (req, res) => {
+module.exports.getAllProductsOfACategory = async (req, res,next) => {
   const { id } = req.params;
 
   try {
     const categoryInDB = await Category.findOne({ where: { id } });
     if (!categoryInDB) {
-      return res.status(200).json(ApiResponse(true,200,{},"No such Category created",null));
+      return next( new APIError(404, "Category not found "));
+
     }
 
     const products = await Product.findAll({
@@ -17,30 +19,32 @@ module.exports.getAllProductsOfACategory = async (req, res) => {
     });
 
     if (!products) {
-      return res.status(200).json(ApiResponse(true,200,{},`No products belong to category ${categoryInDB.title}`,null));
+      return next( new APIError(404, "No Product Found"));
+      
 
     }
 
-    return res.status(200).json(ApiResponse(true,200,products,`All product belongs to the ${categoryInDB.title} category`,null));
+    return res.status(200).json(ApiResponse(true,products,`All product belongs to the ${categoryInDB.title} category`));
 
   } catch (error) {
-    return res.status(500).json(ApiResponse(false,500,null,"Internal Server Error",error));   
+    return next( new APIError(500, "Something went wrong while fetching category products"));
+
   }
 };
 
-module.exports.getAllCategory = async(req,res)=>{
+module.exports.getAllCategory = async(_,res,next)=>{
 
     try {
 
         const categories = await Category.findAll({});
         if (!categories) {
-          return res.status(200).json(ApiResponse(true,200,{},"No Category Found",null));
+          return next( new APIError(404, "No Category Found "));
+
         }
         
-        return res.status(200).json(ApiResponse(true,200,categories,"All Categories",null));
+        return res.status(200).json(ApiResponse(true,categories,"All Categories"));
         
     } catch (error) {
-      return res.status(500).json(ApiResponse(false,500,null,"Internal Server Error",error));
-
+        return next( new APIError(500, "Something went wrong while fetching all categories"));
     }
 }
